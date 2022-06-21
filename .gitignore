@@ -1,0 +1,14 @@
+notes.txt
+*pycache*
+__pycache__/*
+*.pyc
+test*
+test/*
+test.*
+test/
+data/scan.json
+data/db.json
+*.bck
+*bck*
+db.json
+*/db.json
