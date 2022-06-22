@@ -2,11 +2,17 @@ import os, sys, io, re, json, time
 from tkinter.messagebox import RETRY
 from fastapi import FastAPI
 from db import DB
+from mac import Mac
 from discovery import Discovery
 
 app = FastAPI()
 db = DB()
+mac = Mac()
 ds = Discovery()
+
+db.setDiscovery(ds)
+ds.setMac(mac)
+db.setMac(mac)
 
 interface = "\\Device\\NPF_{FE303E25-2DBF-477A-87B6-891B3279AA74}"
 

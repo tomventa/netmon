@@ -1,5 +1,6 @@
 from hashlib import new
 import os, sys, time, json
+from telnetlib import IP
 from re import T
 
 class DB:
@@ -14,6 +15,8 @@ class DB:
         self.loaded:bool = False
         self.data:dict = {}
         self.lock:bool = False
+        self.discovery = None
+        self.mac = None
         
         # Reload the database
         self._reload()
@@ -90,6 +93,12 @@ class DB:
     def getDeviceByMac(self, mac:str) -> dict:
         return
     
+    def setDiscovery(self, discovery) -> None:
+       self.discovery = discovery 
+       
+    def setMac(self, mac:object) -> None:
+        self.mac = mac
+    
     def autoInsert(self, scanResult:list):
         for dev in scanResult:
             # Mac To Ip
@@ -112,4 +121,27 @@ class DB:
                 if lastMac!=dev["mac"]:
                     self.data["history"]["ip_to_mac"][dev["ip"]].append(newIPRecord)
             """
+            # Get additional information about the device
+            hostname:str = self.discovery.getHostName(dev["ip"])
+            macInfo = self.mac.search(dev["mac"])
+            macVendor = macInfo["vendorName"] if macInfo is not None else "unknown"
+            # Mac Metadata
+            if dev["mac"] not in self.data["history"]["mac_metadata"]:
+                self.data["history"]["mac_metadata"][dev["mac"]] = {}
+            
+            # Set metadata
+            self.data["history"]["mac_metadata"][dev["mac"]]["first_seen"] = int(time.time())
+            self.data["history"]["mac_metadata"][dev["mac"]]["last_seen"] = int(time.time())
+            self.data["history"]["mac_metadata"][dev["mac"]]["notes"] = ""
+            self.data["history"]["mac_metadata"][dev["mac"]]["trusted"] = False
+            self.data["history"]["mac_metadata"][dev["mac"]]["type"] = "generic"
+            self.data["history"]["mac_metadata"][dev["mac"]]["os"] = "unknown"
+            self.data["history"]["mac_metadata"][dev["mac"]]["location"] = "unknown"
+            self.data["history"]["mac_metadata"][dev["mac"]]["name"] = "Unknown Device"
+            self.data["history"]["mac_metadata"][dev["mac"]]["connected_via"] = "unknown"
+            self.data["history"]["mac_metadata"][dev["mac"]]["connected_thru"] = "unknown"
+            self.data["history"]["mac_metadata"][dev["mac"]]["mac_vendor"] = macVendor
+            self.data["history"]["mac_metadata"][dev["mac"]]["hostname"] = hostname
+            
+            
             

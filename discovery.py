@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from tkinter import N
 import scapy.config
 import scapy.layers.l2
 import scapy.route
@@ -9,20 +10,31 @@ import os, sys, io, time, json, math
 
 class Discovery:
     def __init__(self) -> None:
+        self.mac = None
         pass
+    
+    def setMac(self, mac) -> None:
+        self.mac = mac
     
     def long2net(self, arg):
         if (arg <= 0 or arg >= 0xFFFFFFFF):
             raise ValueError("Illegal netmask value", hex(arg))
         return 32 - int(round(math.log(0xFFFFFFFF - arg, 2)))
     
-    def to_CIDR_notation(self, bytes_network, bytes_netmask):
+    def toCIDRNotation(self, bytes_network, bytes_netmask):
         network = scapy.utils.ltoa(bytes_network)
         netmask = self.long2net(bytes_netmask)
         net = "%s/%s" % (network, netmask)
         return None if netmask<16 else net
     
-    def _scan(self, net, interface, timeout=2):
+    def getHostName(self, ip:str) -> str:
+        try:
+            hostname = socket.gethostbyaddr(ip)
+            return hostname[0]
+        except socket.herror:
+            return None
+    
+    def _scan(self, net:str, interface:str, timeout:int=2, resolveHostname:bool=False) -> list:
         try:
             ans, unans = scapy.layers.l2.arping(net, iface=interface, timeout=timeout, verbose=False)
             devices = []
@@ -32,13 +44,8 @@ class Discovery:
                 device["ip"] = r.psrc
                 device["mac"] = r.src
                 # Resolve the hostname
-                try:
-                    #hostname = socket.gethostbyaddr(r.psrc)
-                    #device["hostname"] = hostname[0]
-                    device["hostname"] = "test"
-                except socket.herror:
-                    # failed to resolve
-                    device["hostname"] = None
+                if resolveHostname:
+                    device["hostname"] = self.resolveHostname(r.psrc)
                 # Add this device to the final list
                 devices.append(device)
                 print(device)
@@ -71,7 +78,7 @@ class Discovery:
                 continue
 
             # Gte CIDR notation (ip/n)
-            net = self.to_CIDR_notation(network, netmask)
+            net = self.toCIDRNotation(network, netmask)
 
             # If network CIDR is not empty
             if net:
