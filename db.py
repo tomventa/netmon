@@ -53,7 +53,7 @@ class DB:
         try:
             with open("data/"+self.dbName, 'w') as f:
                 try:
-                    f.write(json.dumps(self.data))
+                    f.write(json.dumps(self.data, indent=2))
                     return True
                 except:
                     print("Database error while writing data")
@@ -98,50 +98,40 @@ class DB:
        
     def setMac(self, mac:object) -> None:
         self.mac = mac
+        
+    def getMacIPList(self) -> list:
+        output = []
+        
+        return output
     
     def autoInsert(self, scanResult:list):
+        # Foreach device in the scan result list
         for dev in scanResult:
-            # Mac To Ip
-            """
-            newMacRecord = [dev["ip"], int(time.time())]
-            if dev["mac"] not in self.data["history"]["mac_to_ip"]:
-                self.data["history"]["mac_to_ip"][dev["mac"]] = []
-                self.data["history"]["mac_to_ip"][dev["mac"]].append(newMacRecord)
-            else:
-                lastIP = self.data["history"]["mac_to_ip"][dev["mac"]][-1][0]
-                if lastIP!=dev["ip"]:
-                    self.data["history"]["mac_to_ip"][dev["mac"]].append(newMacRecord)
-            # IP to Mac Address
-            newIPRecord = [dev["mac"], int(time.time())]
-            if dev["ip"] not in self.data["history"]["ip_to_mac"]:
-                self.data["history"]["ip_to_mac"][dev["ip"]] = []
-                self.data["history"]["ip_to_mac"][dev["ip"]].append(newIPRecord)
-            else:
-                lastMac = self.data["history"]["ip_to_mac"][dev["ip"]][-1][0]
-                if lastMac!=dev["mac"]:
-                    self.data["history"]["ip_to_mac"][dev["ip"]].append(newIPRecord)
-            """
             # Get additional information about the device
             hostname:str = self.discovery.getHostName(dev["ip"])
             macInfo = self.mac.search(dev["mac"])
             macVendor = macInfo["vendorName"] if macInfo is not None else "unknown"
             # Mac Metadata
             if dev["mac"] not in self.data["history"]["mac_metadata"]:
-                self.data["history"]["mac_metadata"][dev["mac"]] = {}
-            
-            # Set metadata
-            self.data["history"]["mac_metadata"][dev["mac"]]["first_seen"] = int(time.time())
+                # Initialize the dict
+                self.data["history"]["mac_metadata"][dev["mac"]] = {
+                    "first_seen": int(time.time()), # First seen timestamp
+                    "notes": "",                # Notes about the device
+                    "trusted": False,           # Device flagged as trusted
+                    "type": "generic",          # Device type (eg. router, switch, etc.)
+                    "os": "unknown",            # Device OS (eg. Windows, Linux, Mac, etc.)
+                    "os_version": "unknown",    # Device OS version (eg "10" for Windows 10)
+                    "location": "unknown",      # Device location (eg "Bedroom")
+                    "name": "Unknown Device",   # Device custom name (eg "Tom laptop")
+                    "connected_via": "unknown", # Wire/Wifi/Bluetooth/USB/power plug/...
+                    "connected_thru": "unknown",# Other device MAC address
+                    "mac_vendor": macVendor,    # Mac cached vendor name
+                    "ip_list": [dev["ip"], ]    # List of IP addresses used by the device
+                }
+            # Update metadata
             self.data["history"]["mac_metadata"][dev["mac"]]["last_seen"] = int(time.time())
-            self.data["history"]["mac_metadata"][dev["mac"]]["notes"] = ""
-            self.data["history"]["mac_metadata"][dev["mac"]]["trusted"] = False
-            self.data["history"]["mac_metadata"][dev["mac"]]["type"] = "generic"
-            self.data["history"]["mac_metadata"][dev["mac"]]["os"] = "unknown"
-            self.data["history"]["mac_metadata"][dev["mac"]]["location"] = "unknown"
-            self.data["history"]["mac_metadata"][dev["mac"]]["name"] = "Unknown Device"
-            self.data["history"]["mac_metadata"][dev["mac"]]["connected_via"] = "unknown"
-            self.data["history"]["mac_metadata"][dev["mac"]]["connected_thru"] = "unknown"
-            self.data["history"]["mac_metadata"][dev["mac"]]["mac_vendor"] = macVendor
             self.data["history"]["mac_metadata"][dev["mac"]]["hostname"] = hostname
-            
-            
+            # Update the IP used by this mac
+            if not dev["ip"] in self.data["history"]["mac_metadata"][dev["mac"]]["ip_list"]:
+                self.data["history"]["mac_metadata"][dev["mac"]]["ip_list"].append(dev["ip"])
             
