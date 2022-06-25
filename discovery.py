@@ -7,6 +7,8 @@ import socket
 import errno
 import getopt
 import os, sys, io, time, json, math
+from scapy.all import *
+from scapy.layers.inet import IP, ICMP
 
 class Discovery:
     def __init__(self) -> None:
@@ -33,6 +35,20 @@ class Discovery:
             return hostname[0]
         except socket.herror:
             return None
+        
+    def getOS(self, target:str) -> str:
+        pack = IP(dst=target)/ICMP()
+        resp = sr1(pack, timeout=3)
+        if resp:
+            if IP in resp:
+                ttl = resp.getlayer(IP).ttl
+                if ttl <= 64: 
+                    return 'Linux'
+                elif ttl > 64:
+                    return 'Windows'
+                else:
+                    return 'Unknown'
+        else: return "Unknown"
     
     def _scan(self, net:str, interface:str, timeout:int=2, resolveHostname:bool=False) -> list:
         try:

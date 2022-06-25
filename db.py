@@ -132,15 +132,16 @@ class DB:
             if dev["mac"] not in self.data["history"]["mac_metadata"]:
                 # Set as first seen
                 firstSeen = True
-                # Resolve the hostname
+                # Resolve the hostname and the OS
                 hostname:str = self.discovery.getHostName(dev["ip"])
+                os = self.discovery.getOS(dev["ip"])
                 # Initialize the dict
                 self.data["history"]["mac_metadata"][dev["mac"]] = {
                     "first_seen": int(time.time()), # First seen timestamp
                     "notes": "",                # Notes about the device
                     "trusted": False,           # Device flagged as trusted
                     "type": "generic",          # Device type (eg. router, switch, etc.)
-                    "os": "unknown",            # Device OS (eg. Windows, Linux, Mac, etc.)
+                    "os": os,                   # Device OS (eg. Windows, Linux, Mac, etc.)
                     "os_version": "unknown",    # Device OS version (eg "10" for Windows 10)
                     "location": "unknown",      # Device location (eg "Bedroom")
                     "name": "Unknown Device",   # Device custom name (eg "Tom laptop")
