@@ -32,7 +32,7 @@ async def devices() -> list:
     Returns:
         list: _description_
     """
-    return {"devices": db.getDevices()}
+    return {"devices": db.getCurrentDevices()}
 
 @app.get("/api/scan")
 async def scan():
@@ -43,7 +43,7 @@ async def scan():
     """
     result = ds.scan(interface)
     db.autoInsert(result)
-    db.updateDevices(result)
+    db.sync()
     return {"message": "Scanning the network...", "result": result}
 
 @app.get("/api/lastScan")

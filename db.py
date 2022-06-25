@@ -17,6 +17,8 @@ class DB:
         self.lock:bool = False
         self.discovery = None
         self.mac = None
+        # Max results in scanResults
+        self.maxScanResults:int = 10
         
         # Reload the database
         self._reload()
@@ -85,13 +87,10 @@ class DB:
         self.reload()
         return self.data["devices"]
     
-    def updateDevices(self, devices:dict):
-        self.data["devices"] = devices
-        self.sync()
-        return True
-    
     def getDeviceByMac(self, mac:str) -> dict:
-        return
+        if mac in self.data["history"]["mac_metadata"]:
+            return self.data["history"]["mac_metadata"][mac]
+        return None
     
     def setDiscovery(self, discovery) -> None:
        self.discovery = discovery 
@@ -99,20 +98,42 @@ class DB:
     def setMac(self, mac:object) -> None:
         self.mac = mac
         
-    def getMacIPList(self) -> list:
-        output = []
-        
+    def insertScanResults(self, scanResult:list):
+        self.data["history"]["scan_results"].append([scanResult])
+        # Auto clean the scan result list
+        if len(self.data["history"]["scan_results"]) > self.maxScanResults:
+            self.data["history"]["scan_results"].pop(0)
+            
+    def getCurrentDevices(self):
+        output = {
+            "scan_time": self.data["history"]["lastScan"]["time"],
+            "results": []
+        }
+        for dev in self.data["history"]["lastScan"]["result"]:
+            byMac = self.getDeviceByMac(dev["mac"])
+            output["results"].append({**dev, **byMac})
         return output
-    
+
     def autoInsert(self, scanResult:list):
         # Foreach device in the scan result list
+        historyItems = []
+        # Update last scan
+        self.data["history"]["lastScan"]["time"] = int(time.time())
+        self.data["history"]["lastScan"]["result"] = scanResult
+        # Add this to the scan results history
+        self.insertScanResults(scanResult)
+        # Update the database using each device
         for dev in scanResult:
             # Get additional information about the device
-            hostname:str = self.discovery.getHostName(dev["ip"])
             macInfo = self.mac.search(dev["mac"])
             macVendor = macInfo["vendorName"] if macInfo is not None else "unknown"
+            firstSeen = True
             # Mac Metadata
             if dev["mac"] not in self.data["history"]["mac_metadata"]:
+                # Set as first seen
+                firstSeen = True
+                # Resolve the hostname
+                hostname:str = self.discovery.getHostName(dev["ip"])
                 # Initialize the dict
                 self.data["history"]["mac_metadata"][dev["mac"]] = {
                     "first_seen": int(time.time()), # First seen timestamp
@@ -126,11 +147,14 @@ class DB:
                     "connected_via": "unknown", # Wire/Wifi/Bluetooth/USB/power plug/...
                     "connected_thru": "unknown",# Other device MAC address
                     "mac_vendor": macVendor,    # Mac cached vendor name
-                    "ip_list": [dev["ip"], ]    # List of IP addresses used by the device
+                    "ip_list": [dev["ip"], ],   # List of IP addresses used by the device
+                    "hostname": hostname,       # Hostname of the device
                 }
-            # Update metadata
+            # Update the last seen timestamp
             self.data["history"]["mac_metadata"][dev["mac"]]["last_seen"] = int(time.time())
-            self.data["history"]["mac_metadata"][dev["mac"]]["hostname"] = hostname
+            # Resolve the hostname, if needed
+            if not firstSeen and self.data["settings"]["autoScanResolveHostnames"]:
+                self.data["history"]["mac_metadata"][dev["mac"]]["hostname"] = hostname
             # Update the IP used by this mac
             if not dev["ip"] in self.data["history"]["mac_metadata"][dev["mac"]]["ip_list"]:
                 self.data["history"]["mac_metadata"][dev["mac"]]["ip_list"].append(dev["ip"])
