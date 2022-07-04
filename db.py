@@ -1,7 +1,4 @@
-from hashlib import new
 import os, sys, time, json
-from telnetlib import IP
-from re import T
 
 class DB:
     def __init__(self, dbName:str="db.json", reloadTimer:int=5, syncTimer:int=2) -> None:
@@ -99,7 +96,7 @@ class DB:
         self.mac = mac
         
     def insertScanResults(self, scanResult:list):
-        self.data["history"]["scan_results"].append([scanResult])
+        self.data["history"]["scan_results"].append([int(time.time()), scanResult])
         # Auto clean the scan result list
         if len(self.data["history"]["scan_results"]) > self.maxScanResults:
             self.data["history"]["scan_results"].pop(0)

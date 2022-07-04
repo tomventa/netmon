@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from tabnanny import verbose
 from tkinter import N
 import scapy.config
 import scapy.layers.l2
@@ -38,7 +39,7 @@ class Discovery:
         
     def getOS(self, target:str) -> str:
         pack = IP(dst=target)/ICMP()
-        resp = sr1(pack, timeout=3)
+        resp = sr1(pack, timeout=3, verbose=0)
         if resp:
             if IP in resp:
                 ttl = resp.getlayer(IP).ttl

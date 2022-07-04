@@ -1,2 +1,3 @@
 scapy
 fastapi[all]
+scapy-p0f

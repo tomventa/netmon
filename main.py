@@ -1,14 +1,31 @@
 import os, sys, io, re, json, time
 from tkinter.messagebox import RETRY
 from fastapi import FastAPI
+import uvicorn
 from db import DB
 from mac import Mac
 from discovery import Discovery
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 db = DB()
 mac = Mac()
 ds = Discovery()
+
+# Set CORS
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:8000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 db.setDiscovery(ds)
 ds.setMac(mac)
@@ -49,3 +66,15 @@ async def scan():
 @app.get("/api/lastScan")
 async def lastScan():
     return {"lastScan": 0}
+
+@app.get("/api/auth/me")
+async def authme():
+    return {"auth": True,
+            "username": "user",
+            "capitalize": True,
+            "role": "admin",
+            "essential": True,
+            "since": 0}
+
+if __name__ == '__main__':
+    uvicorn.run("main:app",host='127.0.0.1', port=8000, reload=True, debug=True, workers=3)

@@ -15,3 +15,8 @@ db.json
 desktop.ini
 *desktop.ini
 */desktop.ini
+web/node_modules/*
+web/public/plugins/*
+web/*/*.test
+web/*ignore*
+web/*ignore
