@@ -1,14 +1,10 @@
 <script>
-  import  '../../public/js/auth.js'
-  import {apiBase} from '../utils/api.js'
-  let counter = 0;
-  setInterval(function() {
-    counter += 1;
-  }, 1000)
+  import {auth} from '../utils/auth.js'
+  
 </script>
 
 <main>
-  <h1>Hello world! {counter}</h1>
+  <h1>Hello world!</h1>
 
   <p>
     Visit <a href="https://svelte.dev">svelte.dev</a> to learn how to build Svelte

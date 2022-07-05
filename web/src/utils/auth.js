@@ -1,48 +1,112 @@
+/* Import API object */
 import {api} from './api.js'
-/* Get environment information */
-let logged = localStorage.getItem("logged");
-let lastCheck = localStorage.getItem("authLastCheck");
-let page = window.location.pathname;
-let timestamp = Date.now() / 1000;
-let checkTimer = 3600; // 1 hour
-let apiEndPoint = "http://localhost:8000/api/"
+/* Auth settings */
+const checkTimer = 3600; // 1 hour
+const authPages = ["login", "register", "forgot", "logout"];
 
-console.log(api.getSeed())
+class Auth {
+    constructor(check = true) {
+        // Automatic check if needed
+        if(check) this.check();
+    }
 
-
-/* Redirect if not in already in login page */
-let isLoginPage = page.replaceAll("/", "") === "login";
-if (logged !== "true" && isLoginPage == false) {
-    console.log("[Auth] You are not logged, redirecting...")
-    window.location.replace("/login/");
-} else if (isLoginPage && logged) {
-    console.log("[Auth] You are already logged, redirecting...")
-    window.location.replace("/");
-}
-
-/* Check last Auth check via API */
-if (1 == 1 || lastCheck != undefined && (timestamp - parseInt(lastCheck)) > checkTimer) {
-    console.log("[Auth] Last check was more than 1 hour ago, checking API...")
-    fetch(apiEndPoint + "auth/me").then(response => response.json()).then(
-        data => {
-            if (data.auth === true) {
-                console.log("[Auth] API confirmed: auth is still valid")
-                localStorage.setItem("authLastCheck", timestamp.toString());
-                localStorage.setItem("username", data.username);
-                localStorage.setItem("capitalizeUsername", data.capitalize.toString());
-                localStorage.setItem("role", data.role);
-                localStorage.setItem("userEssential", data.essential.toString());
-            } else {
-                console.log("[Auth] Auth expired confirmed by API, redirecting...");
-                localStorage.setItem("logged", "false");
-                window.location.replace("/login/");
+    check(force = false) {
+        // Default state: same as force state
+        let toCheck = force;
+        // Check using last time check timestamp
+        if (localStorage.getItem("authLastCheck") == undefined){
+            toCheck = true;
+        }else if(localStorage.getItem("logged")==="false"){
+            toCheck = true;
+        }else{
+            let lastCheck = localStorage.getItem("authLastCheck");
+            let timestamp = Date.now() / 1000;
+            if (timestamp - parseInt(lastCheck) > checkTimer) {
+                toCheck = true;
             }
         }
-    );
+        // Check if needed, and return the result
+        if (toCheck) return this._check();
+        // Return true: auth is still valid
+        return true;
+    }
+
+    _check() {
+        // Check if logged
+        let data = api.call("auth/me", {}, "GET");
+        data.then(
+            data => {
+                // Update last check timestamp
+                let timestamp = Date.now() / 1000;
+                localStorage.setItem("authLastCheck", timestamp.toString());
+                // Update user data
+                if (data.auth === true) {
+                    console.log("[Auth] API check: auth is valid");
+                    // Update user data
+                    localStorage.setItem("logged", "true");
+                    localStorage.setItem("username", data.username);
+                    localStorage.setItem("role", data.role);
+                    localStorage.setItem("userEssential", data.essential.toString());
+                } else if (this.isAuthPage() === false){
+                    console.log("[Auth] Auth expired, redirecting...");
+                    // Clear user data
+                    this.setLogout();
+                    // Rediret the user to the login page
+                    window.location.replace("/login/");
+                }
+            }
+        );
+    }
+
+    isAuthPage(){
+        // Get current auth page, fixing common paths
+        let page = window.location.pathname;
+        page = page.replaceAll("/./", "");
+        page = page.replaceAll("//", "/");
+        page = page.replaceAll("/index.html", "/");
+        page = page.replaceAll("/index", "/");
+        if (page.endsWith("/"))   page = page.substring(0, page.length - 1);
+        if (page.startsWith("/")) page = page.substring(1);
+
+        //return true;
+        // Check if current page is an auth page
+        let ret = false
+        authPages.forEach(pageName => {
+            if(page==pageName) ret = true;
+        });
+
+        // In all other cases, return false
+        console.log("[Auth] Current page is not an auth page", page);
+        return ret;
+    }
+
+    setLogout(){
+        localStorage.setItem("logged", "false");
+        localStorage.setItem("role", "guest");
+        localStorage.setItem("userEssential", "false");
+        localStorage.setItem("username", "Guest");
+    }
+
+    setLogin(username, password){
+        
+    }
+
+    isLogged() {
+        return localStorage.getItem("logged")==="true";
+    }
+
+    getUsername() {
+        return localStorage.getItem("username");
+    }
+
+    getRole() {
+        return localStorage.getItem("role");
+    }
+
+    getUserEssential() {
+        return localStorage.getItem("userEssential")==="true";
+    }
 }
 
-/* Resolve current username (using capitalize preference)*/
-let username = localStorage.getItem("username");
-if (localStorage.getItem("userCapitalize") == "true") {
-    username = username.charAt(0).toUpperCase() + username.slice(1);
-}
+// Exporter
+export var auth = new Auth();

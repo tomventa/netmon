@@ -1,5 +1,5 @@
 <script>
-  import {} from '../../utils/auth.js'
+  import {auth} from '../../utils/auth.js'
 
   let error = "";
   let dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;

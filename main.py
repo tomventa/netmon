@@ -69,7 +69,7 @@ async def lastScan():
 
 @app.get("/api/auth/me")
 async def authme():
-    return {"auth": True,
+    return {"auth": False,
             "username": "user",
             "capitalize": True,
             "role": "admin",

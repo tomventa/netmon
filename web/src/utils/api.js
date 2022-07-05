@@ -30,7 +30,6 @@ export const apiBase = IS_PRODUCTION ?
 class Api{
     constructor(base) {
         this.base = base;
-        this.random = Math.floor(Math.random() * 100) + 1;
     }
 
     getSeed(){
@@ -38,15 +37,18 @@ class Api{
     }
 
     async call(url, data, method = 'GET') {
+        console.log("The data is", this.base)
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
         headers.append('Accept', 'application/json');
         headers.append('X-Auth-Token', localStorage.getItem('token'));
         let options = {
             method: method,
-            headers: headers,
-            body: JSON.stringify(data)
+            headers: headers
         };
+        if (method != 'GET' && method != 'HEAD') {
+            options["body"] = JSON.stringify(data);
+        }
         let response = await fetch(this.base + url, options);
         let json = await response.json();
         return json;
