@@ -1,6 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from tabnanny import verbose
-from tkinter import N
 import scapy.config
 import scapy.layers.l2
 import scapy.route

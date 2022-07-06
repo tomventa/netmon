@@ -1,3 +1,5 @@
 scapy
-fastapi[all]
 scapy-p0f
+fastapi[all]
+passlib[bcrypt]
+python-jose[cryptography]

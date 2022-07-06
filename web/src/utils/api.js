@@ -30,18 +30,40 @@ export const apiBase = IS_PRODUCTION ?
 class Api{
     constructor(base) {
         this.base = base;
+        this.autoSetBearer();
     }
 
-    getSeed(){
-        return this.random;
+    autoSetBearer(){
+        if (sessionStorage.getItem('jwt') !== null) {
+            this.setBearer(sessionStorage.getItem('jwt'));
+        }else if (localStorage.getItem('jwt') !== null) {
+            this.setBearer(localStorage.getItem('jwt'));
+        }
+    }
+
+    setBearer(jwt) {
+        this.bearer = jwt;
+    }
+
+    async call_auth(url, data) {
+        let headers = new Headers();
+        headers.append('Content-Type', 'application/x-www-form-urlencoded');
+        let options = {
+            method: 'POST',
+            headers: headers,
+            body: data
+        }
+        let response = await fetch(this.base + url, options);
+        let json = await response.json();
+        return json;
     }
 
     async call(url, data, method = 'GET') {
-        console.log("The data is", this.base)
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
-        headers.append('Accept', 'application/json');
-        headers.append('X-Auth-Token', localStorage.getItem('token'));
+        if (this.bearer !== undefined && this.bearer !== "") {
+            headers.append('Authorization', 'Bearer ' + this.bearer);
+        }
         let options = {
             method: method,
             headers: headers

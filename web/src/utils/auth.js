@@ -1,7 +1,24 @@
+/**
+ * ----------------------------------------------
+ * Authentication Module
+ * ----------------------------------------------
+ * This module is responsible for authentication.
+ * ----------------------------------------------
+ * @module auth
+ * @requires api
+ * @version 1.0.0
+ * @author Tommaso Ventafridda
+ * @license MIT
+ * @date 2021-06-07 (yyyy-dd-mm)
+ * @website https://github.com/tomventa/netmon
+ * ----------------------------------------------
+ */
+
+
 /* Import API object */
-import {api} from './api.js'
+import {api, apiBase} from './api.js'
 /* Auth settings */
-const checkTimer = 3600; // 1 hour
+const renewBefore = 120; // 2 minutes before the token expires
 const authPages = ["login", "register", "forgot", "logout"];
 
 class Auth {
@@ -12,41 +29,68 @@ class Auth {
 
     check(force = false) {
         // Default state: same as force state
-        let toCheck = force;
+        let check = force;
         // Check using last time check timestamp
-        if (localStorage.getItem("authLastCheck") == undefined){
-            toCheck = true;
-        }else if(localStorage.getItem("logged")==="false"){
-            toCheck = true;
+        if (localStorage.getItem("authLogged") == undefined){
+            check = true;
+        } else if (localStorage.getItem("authLogged")==="false"){
+            check = true;
         }else{
-            let lastCheck = localStorage.getItem("authLastCheck");
+            let expire = localStorage.getItem("authExpire");
             let timestamp = Date.now() / 1000;
-            if (timestamp - parseInt(lastCheck) > checkTimer) {
-                toCheck = true;
+            if (timestamp >= parseInt(expire)) {
+                check = true;
             }
         }
-        // Check if needed, and return the result
-        if (toCheck) return this._check();
+        // Update user cached data and recheck auth
+        if (check) return this.updateMe();
+        // Renew the token, if required
+        this.renew();
         // Return true: auth is still valid
         return true;
     }
 
-    _check() {
+    renew(force = false){
+        let toRenew = force;
+        let timestamp = Date.now() / 1000;
+        let expire = parseInt(localStorage.getItem("authExpire"));
+        if (timestamp >= expire - renewBefore) {
+            toRenew = true;
+        }
+        if (toRenew) {
+            console.log("[Auth] Renewing token...");
+            let response = api.call("auth/renew", {}, "GET");
+            response.then(
+                response => {
+                    if ("access_token" in response){
+                        localStorage.setItem(
+                            "authExpire", 
+                            this.getExpire(response.access_token).toString()
+                        );
+                        api.setBearer(response.access_token);
+                        console.log("[Auth] Token renewed!");
+                    }else{
+                        console.log("[Auth] Token renewal failed!");
+                    }
+                }
+            );
+        }
+    }
+
+    updateMe() {
         // Check if logged
         let data = api.call("auth/me", {}, "GET");
         data.then(
             data => {
-                // Update last check timestamp
-                let timestamp = Date.now() / 1000;
-                localStorage.setItem("authLastCheck", timestamp.toString());
                 // Update user data
-                if (data.auth === true) {
-                    console.log("[Auth] API check: auth is valid");
+                if (data.username != undefined) {
+                    console.log("[Auth] Updated user data");
                     // Update user data
-                    localStorage.setItem("logged", "true");
-                    localStorage.setItem("username", data.username);
-                    localStorage.setItem("role", data.role);
-                    localStorage.setItem("userEssential", data.essential.toString());
+                    localStorage.setItem("authLogged", "true");
+                    localStorage.setItem("authUsername", data.username);
+                    localStorage.setItem("authTelegram", data.telegram);
+                    localStorage.setItem("authFullName", data.full_name);
+                    localStorage.setItem("authAdmin", data.admin.toString());
                 } else if (this.isAuthPage() === false){
                     console.log("[Auth] Auth expired, redirecting...");
                     // Clear user data
@@ -68,7 +112,6 @@ class Auth {
         if (page.endsWith("/"))   page = page.substring(0, page.length - 1);
         if (page.startsWith("/")) page = page.substring(1);
 
-        //return true;
         // Check if current page is an auth page
         let ret = false
         authPages.forEach(pageName => {
@@ -76,19 +119,48 @@ class Auth {
         });
 
         // In all other cases, return false
-        console.log("[Auth] Current page is not an auth page", page);
         return ret;
     }
 
     setLogout(){
-        localStorage.setItem("logged", "false");
-        localStorage.setItem("role", "guest");
-        localStorage.setItem("userEssential", "false");
-        localStorage.setItem("username", "Guest");
+        localStorage.clear();
+        // localStorage.setItem("authExpire", "0");
+        // localStorage.setItem("authLogged", "false");
+        // localStorage.setItem("authAdmin", "false");
+        // localStorage.setItem("authUsername", "false");
+        // localStorage.setItem("authTelegram", "");
+        // localStorage.setItem("authFullName", "Guest User");
     }
 
-    setLogin(username, password){
-        
+    
+    async login(formData){
+        let user = formData.username;
+        let pwd = formData.password;
+        let formStr = "username="+user+"&password="+pwd;
+        let output = {
+            "success": false,
+            "message": "Unknown error detected!"
+        }
+        let response = await api.call_auth("auth/token", formStr);
+        if ("access_token" in response){
+            output["success"] = true;
+            output["message"] = "Login successful!";
+            api.setBearer(response.access_token);
+            localStorage.setItem("jwt", response.access_token);
+            localStorage.setItem(
+                "authExpire", 
+                this.getExpire(response.access_token).toString()
+            );
+        }else{
+            output["message"] = response.detail;
+        }
+        return output;
+    }
+
+    getExpire(jwt){
+        let jwt_parts = jwt.split(".");
+        let jwt_payload = JSON.parse(atob(jwt_parts[1]));
+        return jwt_payload.exp;
     }
 
     isLogged() {
@@ -96,15 +168,15 @@ class Auth {
     }
 
     getUsername() {
-        return localStorage.getItem("username");
+        return localStorage.getItem("authUsername");
     }
 
-    getRole() {
-        return localStorage.getItem("role");
+    isAdmin() {
+        return localStorage.getItem("authAdmin")==="true";
     }
 
-    getUserEssential() {
-        return localStorage.getItem("userEssential")==="true";
+    getApi(){
+        return api;
     }
 }
 
