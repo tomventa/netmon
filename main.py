@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # Default used libs
-from distutils.command.build import build
 import os, sys, io, re, json, time
-
-from requests import head
 # Custom modules
 from db import DB
 from mac import Mac
@@ -22,7 +19,7 @@ from pydantic import BaseModel
 # openssl rand -hex 32
 SECRET_KEY = "76d73f77e971926b8f31afd4dcfe911873f3164e1b600d7dd300ae9eeef0a68c"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 2
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 fake_users_db = {
     "netmon": {
@@ -30,7 +27,7 @@ fake_users_db = {
         "full_name": "Netmon User",
         "telegram":  "123456789",
         "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": True,
+        "disabled": False,
         "admin": True
     }
 }
@@ -150,7 +147,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="Your account is disabled")
     return current_user
 
 
